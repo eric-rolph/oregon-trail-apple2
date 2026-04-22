@@ -155,6 +155,16 @@ body {
   border-radius: 8px;
 }
 
+#emulator-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 8px;
+  z-index: 1;
+}
+
 /* ── Scanlines overlay ─────────────────────────────────────── */
 .scanlines {
   position: absolute;

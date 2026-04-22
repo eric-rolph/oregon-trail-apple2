@@ -34,6 +34,10 @@
           <div class="scanlines" aria-hidden="true"></div>
           <div class="crt-flicker" aria-hidden="true"></div>
           <canvas id="screen" width="560" height="384"></canvas>
+          <iframe id="emulator-frame" title="Apple IIe Emulator" allowfullscreen
+            allow="autoplay; gamepad; keyboard-map"
+            style="display:none; width:100%; height:100%; border:none; border-radius:8px;"
+            sandbox="allow-scripts allow-same-origin allow-popups"></iframe>
           <!-- Loading overlay -->
           <div id="loading-overlay">
             <div class="loader-ring"></div>
@@ -52,11 +56,8 @@
     <!-- ── Controls ──────────────────────────────────── -->
     <section id="controls" aria-label="Emulator Controls">
       <div class="control-group">
-        <button id="btn-reset" class="ctrl-btn" title="Reset (Ctrl+Shift+R)">
+        <button id="btn-reset" class="ctrl-btn" title="Reload emulator">
           <span class="btn-icon">⟲</span> RESET
-        </button>
-        <button id="btn-pause" class="ctrl-btn" title="Pause/Resume">
-          <span class="btn-icon">⏸</span> PAUSE
         </button>
         <button id="btn-fullscreen" class="ctrl-btn" title="Fullscreen">
           <span class="btn-icon">⛶</span> FULL
@@ -111,8 +112,9 @@
     <!-- ── Footer ────────────────────────────────────── -->
     <footer id="site-footer">
       <p>
-        Emulated with ♥ on
-        <a href="https://workers.cloudflare.com" target="_blank" rel="noopener">Cloudflare Workers</a>
+        Emulated with ♥ using
+        <a href="https://apple2ts.com" target="_blank" rel="noopener">Apple2TS</a>
+        · Hosted on <a href="https://workers.cloudflare.com" target="_blank" rel="noopener">Cloudflare Workers</a>
         · Preserved by <a href="https://archive.org/details/ProjectSpaceStation4amCrack" target="_blank" rel="noopener">4am / Internet Archive</a>
       </p>
     </footer>
