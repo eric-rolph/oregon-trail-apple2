@@ -2,6 +2,7 @@
  * Project: Space Station — Main Entry Point
  * Bootstraps the Apple IIe emulator, loads disk images, and wires up the UI.
  */
+import { Apple2e } from './emulator/apple2e';
 
 // ── Starfield Background ────────────────────────────────────
 function initStarfield() {
@@ -231,88 +232,130 @@ async function boot() {
     led.classList.add('active');
     setTimeout(() => led.classList.remove('active'), 1500);
 
-    setStatus('Initializing emulator…');
+    setStatus('Initializing Apple IIe…');
 
-    // For Phase 1: render a demonstration screen showing the game is loaded
-    // The full emulator integration connects here
-    const memory = new Uint8Array(65536);
+    // ── Create and configure emulator ──────────────────────
+    const apple = new Apple2e();
+    apple.loadDiskA(sideA);
+    apple.loadDiskB(sideB);
 
-    // Write a welcome message to text page 1 ($0400)
-    const msg1 = 'PROJECT: SPACE STATION';
-    const msg2 = 'APPLE IIE EMULATOR READY';
-    const msg3 = 'SIDE A: ' + sideA.length + ' BYTES';
-    const msg4 = 'SIDE B: ' + sideB.length + ' BYTES';
-    const msg5 = 'CLOUDFLARE WORKERS EDGE';
-    const msg6 = 'EMULATOR CORE LOADING...';
+    // Wire drive LED
+    apple.onDriveLED = (on: boolean) => {
+      if (on) led.classList.add('active');
+      else led.classList.remove('active');
+    };
 
+    // Wire video output - render on each frame
+    apple.onFrame = (memory: Uint8Array) => {
+      if (apple.textMode) {
+        renderer.renderTextPage(memory);
+      }
+      // TODO: Hi-res and Lo-res rendering
+    };
+
+    // Show initial status on screen before booting
     const textBase = [
       0x400, 0x480, 0x500, 0x580, 0x600, 0x680, 0x700, 0x780,
       0x428, 0x4A8, 0x528, 0x5A8, 0x628, 0x6A8, 0x728, 0x7A8,
       0x450, 0x4D0, 0x550, 0x5D0, 0x650, 0x6D0, 0x750, 0x7D0,
     ];
-
     function writeLine(row: number, text: string) {
       const base = textBase[row];
       const pad = Math.floor((40 - text.length) / 2);
       for (let i = 0; i < 40; i++) {
         const ch = i >= pad && i < pad + text.length
-          ? text.charCodeAt(i - pad)
-          : 0x20;
-        memory[base + i] = ch;
+          ? text.charCodeAt(i - pad) : 0x20;
+        apple.ram[base + i] = ch;
       }
     }
+    for (let r = 0; r < 24; r++)
+      for (let c = 0; c < 40; c++)
+        apple.ram[textBase[r] + c] = 0x20;
 
-    // Fill screen with spaces
-    for (let row = 0; row < 24; row++) {
-      for (let col = 0; col < 40; col++) {
-        memory[textBase[row] + col] = 0x20;
-      }
-    }
+    writeLine(4, 'PROJECT: SPACE STATION');
+    writeLine(6, 'APPLE IIE EMULATOR');
+    writeLine(9, 'SIDE A: ' + sideA.length + ' BYTES');
+    writeLine(10, 'SIDE B: ' + sideB.length + ' BYTES');
+    writeLine(12, 'CLOUDFLARE WORKERS EDGE');
+    writeLine(15, '6502 CPU INITIALIZED');
+    writeLine(16, 'DISK II CONTROLLER READY');
+    writeLine(18, 'PRESS SPACE TO BOOT');
+    writeLine(22, 'ESC FOR OPTIONS');
 
-    writeLine(4, msg1);
-    writeLine(6, msg2);
-    writeLine(9, msg3);
-    writeLine(10, msg4);
-    writeLine(12, msg5);
-    writeLine(16, msg6);
-    writeLine(22, 'PRESS ANY KEY');
-
-    renderer.renderTextPage(memory);
+    renderer.renderTextPage(apple.ram);
 
     // Hide loading overlay
-    await new Promise(r => setTimeout(r, 800));
+    await new Promise(r => setTimeout(r, 600));
     overlay.classList.add('hidden');
 
-    // Wire up controls
+    // ── Keyboard handler ───────────────────────────────────
+    let booted = false;
+    document.addEventListener('keydown', (e) => {
+      e.preventDefault();
+      // Map browser key to Apple II key code
+      let key = 0;
+      if (e.key.length === 1) {
+        key = e.key.toUpperCase().charCodeAt(0);
+      } else switch (e.key) {
+        case 'Enter': key = 0x0D; break;
+        case 'Escape': key = 0x1B; break;
+        case 'Backspace': key = 0x08; break;
+        case 'ArrowLeft': key = 0x08; break;
+        case 'ArrowRight': key = 0x15; break;
+        case 'ArrowUp': key = 0x0B; break;
+        case 'ArrowDown': key = 0x0A; break;
+        case 'Tab': key = 0x09; break;
+      }
+      if (key) {
+        apple.keyDown(key);
+        if (!booted && e.key === ' ') {
+          booted = true;
+          setStatus('Booting from disk…');
+          try { apple.start(); } catch(err) {
+            console.error('[PSS] Boot error:', err);
+          }
+        }
+      }
+    });
+
+    // ── Control buttons ────────────────────────────────────
     document.getElementById('btn-reset')?.addEventListener('click', () => {
-      renderer.clear();
-      setTimeout(() => renderer.renderTextPage(memory), 300);
+      apple.stop();
+      booted = false;
+      for (let r = 0; r < 24; r++)
+        for (let c = 0; c < 40; c++)
+          apple.ram[textBase[r] + c] = 0x20;
+      writeLine(10, 'RESET - PRESS SPACE TO BOOT');
+      renderer.renderTextPage(apple.ram);
     });
 
     let paused = false;
     document.getElementById('btn-pause')?.addEventListener('click', () => {
       paused = !paused;
       const btn = document.getElementById('btn-pause')!;
-      btn.innerHTML = paused
-        ? '<span class="btn-icon">▶</span> PLAY'
-        : '<span class="btn-icon">⏸</span> PAUSE';
+      if (paused) {
+        apple.stop();
+        btn.innerHTML = '<span class="btn-icon">▶</span> PLAY';
+      } else {
+        if (booted) apple.start();
+        btn.innerHTML = '<span class="btn-icon">⏸</span> PAUSE';
+      }
     });
 
     document.getElementById('btn-fullscreen')?.addEventListener('click', () => {
       const monitor = document.getElementById('monitor')!;
-      if (document.fullscreenElement) {
-        document.exitFullscreen();
-      } else {
-        monitor.requestFullscreen();
-      }
+      if (document.fullscreenElement) document.exitFullscreen();
+      else monitor.requestFullscreen();
     });
 
     document.getElementById('color-select')?.addEventListener('change', (e) => {
       renderer.setColorMode((e.target as HTMLSelectElement).value);
-      renderer.renderTextPage(memory);
+      renderer.renderTextPage(apple.ram);
     });
 
-    console.log('[PSS] Emulator ready. Side A:', sideA.length, 'Side B:', sideB.length);
+    console.log('[PSS] Apple IIe emulator ready.');
+    console.log('[PSS] Side A:', sideA.length, 'bytes, Side B:', sideB.length, 'bytes');
+    console.log('[PSS] Press SPACE to boot from disk.');
   } catch (err) {
     setStatus(`ERROR: ${err}`);
     console.error('[PSS] Boot failed:', err);
