@@ -3,35 +3,30 @@
  * Embeds Apple2TS emulator to play the game, with our premium CRT UI wrapper.
  */
 
-// ── Starfield Background ────────────────────────────────────
-function initStarfield() {
+// ── Prairie Background ────────────────────────────────────
+function initPrairie() {
   const c = document.getElementById('starfield') as HTMLCanvasElement;
   if (!c) return;
   const ctx = c.getContext('2d')!;
-  const stars: { x: number; y: number; r: number; s: number }[] = [];
   const resize = () => { c.width = innerWidth; c.height = innerHeight; };
   resize();
   addEventListener('resize', resize);
-  for (let i = 0; i < 200; i++) {
-    stars.push({
-      x: Math.random() * c.width,
-      y: Math.random() * c.height,
-      r: Math.random() * 1.5 + 0.3,
-      s: Math.random() * 0.3 + 0.05,
-    });
-  }
-  (function draw() {
-    ctx.clearRect(0, 0, c.width, c.height);
-    for (const s of stars) {
-      s.y += s.s;
-      if (s.y > c.height) { s.y = 0; s.x = Math.random() * c.width; }
-      ctx.beginPath();
-      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(200,220,255,${0.3 + s.r * 0.3})`;
-      ctx.fill();
-    }
-    requestAnimationFrame(draw);
-  })();
+  
+  // Draw a simple static prairie landscape
+  ctx.fillStyle = '#87CEEB'; // Sky blue
+  ctx.fillRect(0, 0, c.width, c.height * 0.6);
+  
+  ctx.fillStyle = '#8B4513'; // Saddle brown mountains
+  ctx.beginPath();
+  ctx.moveTo(0, c.height * 0.6);
+  ctx.lineTo(c.width * 0.2, c.height * 0.4);
+  ctx.lineTo(c.width * 0.5, c.height * 0.6);
+  ctx.lineTo(c.width * 0.8, c.height * 0.3);
+  ctx.lineTo(c.width, c.height * 0.6);
+  ctx.fill();
+
+  ctx.fillStyle = '#2E8B57'; // Sea green grass
+  ctx.fillRect(0, c.height * 0.6, c.width, c.height * 0.4);
 }
 
 // ── Status Updater ──────────────────────────────────────────
@@ -42,10 +37,8 @@ function setStatus(msg: string) {
 
 // ── Build the emulator URL ──────────────────────────────────
 function getEmulatorURL(color = 'color', speed = 'normal'): string {
-  // The disk images are served from our own Cloudflare Worker.
   const origin = window.location.origin;
-  // Use our pipe-separated multi-disk syntax added to Apple2TS
-  const diskURL = `${origin}/disks/pss_side_a.dsk|${origin}/disks/pss_side_b.dsk`;
+  const diskURL = `${origin}/disks/oregon_trail.dsk`;
   
   const params = new URLSearchParams({
     machine: 'apple2ee',
@@ -53,13 +46,12 @@ function getEmulatorURL(color = 'color', speed = 'normal'): string {
     color: color,
     speed: speed,
   });
-
-  return `/emulator/index.html?${params.toString()}#${diskURL}`;
+  return `/emulator/index.html?${params.toString()}#${encodeURI(diskURL)}`;
 }
 
 // ── Boot ─────────────────────────────────────────────────────
 async function boot() {
-  initStarfield();
+  initPrairie();
   const overlay = document.getElementById('loading-overlay')!;
   const led = document.getElementById('drive-led')!;
   const emulatorFrame = document.getElementById('emulator-frame') as HTMLIFrameElement;
@@ -68,11 +60,10 @@ async function boot() {
   try {
     // Verify disk images are accessible
     setStatus('Verifying disk images…');
-    const checkA = await fetch('/disks/pss_side_a.dsk', { method: 'HEAD' });
-    const checkB = await fetch('/disks/pss_side_b.dsk', { method: 'HEAD' });
+    const checkA = await fetch('/disks/oregon_trail.woz', { method: 'HEAD' });
     
-    if (!checkA.ok || !checkB.ok) {
-      throw new Error('Disk images not found on server');
+    if (!checkA.ok) {
+      throw new Error('Disk image not found on server');
     }
     
     setStatus('Disk images verified ✓');
@@ -84,7 +75,7 @@ async function boot() {
     
     // Build the emulator URL and load it
     const emulatorURL = getEmulatorURL();
-    console.log('[PSS] Emulator URL:', emulatorURL);
+    console.log('[OregonTrail] Emulator URL:', emulatorURL);
     
     // Show the iframe, hide the canvas placeholder
     screen.style.display = 'none';
@@ -112,21 +103,39 @@ async function boot() {
       setTimeout(() => led.classList.remove('active'), 2000);
     });
 
-    document.getElementById('btn-side-b')?.addEventListener('click', () => {
-      const origin = window.location.origin;
-      const diskURL = `${origin}/disks/pss_side_b.dsk`;
-      
-      // Send message to our local apple2ts emulator to mount disk into Drive 1 (index 0)
+    // Removed Side B logic
+
+    document.getElementById('btn-save')?.addEventListener('click', () => {
       if (emulatorFrame.contentWindow) {
-        emulatorFrame.contentWindow.postMessage({
-          type: 'mountDiskFromUrl',
-          url: diskURL,
-          driveIndex: 0
-        }, origin);
-        
-        setStatus('Side B Inserted');
+        emulatorFrame.contentWindow.postMessage({ type: 'saveState' }, window.location.origin);
+        setStatus('Saving Game State...');
         led.classList.add('active');
         setTimeout(() => led.classList.remove('active'), 500);
+      }
+    });
+
+    const fileInput = document.getElementById('load-file-input') as HTMLInputElement;
+    document.getElementById('btn-load')?.addEventListener('click', () => {
+      fileInput?.click();
+    });
+
+    fileInput?.addEventListener('change', (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file && emulatorFrame.contentWindow) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const buffer = event.target?.result as ArrayBuffer;
+          const dataArray = Array.from(new Uint8Array(buffer));
+          emulatorFrame.contentWindow!.postMessage({
+            type: 'loadState',
+            filename: file.name,
+            data: dataArray
+          }, window.location.origin);
+          setStatus('Game State Loaded');
+          led.classList.add('active');
+          setTimeout(() => led.classList.remove('active'), 500);
+        };
+        reader.readAsArrayBuffer(file);
       }
     });
 
@@ -188,13 +197,12 @@ async function boot() {
       emulatorFrame.focus();
     });
 
-    console.log('[PSS] Apple IIe emulator loaded via Apple2TS');
-    console.log('[PSS] Disk A:', checkA.headers.get('content-length'), 'bytes');
-    console.log('[PSS] Disk B:', checkB.headers.get('content-length'), 'bytes');
+    console.log('[OregonTrail] Apple IIe emulator loaded via Apple2TS');
+    console.log('[OregonTrail] Disk:', checkA.headers.get('content-length'), 'bytes');
 
   } catch (err) {
     setStatus(`ERROR: ${err}`);
-    console.error('[PSS] Boot failed:', err);
+    console.error('[OregonTrail] Boot failed:', err);
   }
 }
 

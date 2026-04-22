@@ -6,22 +6,22 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  /* Deep space palette */
-  --bg-deep:       #050810;
-  --bg-surface:    #0a0e1a;
-  --bg-card:       #111628;
-  --border-dim:    #1a2040;
-  --border-glow:   #2a3a6a;
-  --text-primary:  #e0e6f0;
-  --text-muted:    #7a8aaa;
-  --accent-cyan:   #00e5ff;
-  --accent-blue:   #4a7aff;
-  --accent-purple: #8a5cf5;
-  --accent-green:  #39ff14;
+  /* Oregon Trail palette */
+  --bg-deep:       #1a130f;
+  --bg-surface:    #2a201a;
+  --bg-card:       #3a2e25;
+  --border-dim:    #5a483a;
+  --border-glow:   #8a705a;
+  --text-primary:  #e0d4c8;
+  --text-muted:    #a09080;
+  --accent-cyan:   #55ff55;
+  --accent-blue:   #2ecc71;
+  --accent-purple: #f39c12;
+  --accent-green:  #55ff55;
   --accent-amber:  #ffb300;
-  --crt-glow:      rgba(0, 229, 255, 0.08);
-  --monitor-bezel: #1a1a1a;
-  --monitor-inner: #0d0d0d;
+  --crt-glow:      rgba(85, 255, 85, 0.08);
+  --monitor-bezel: #e4d8c5;
+  --monitor-inner: #050d05;
   --font-pixel:    'Press Start 2P', monospace;
   --font-mono:     'Share Tech Mono', 'Courier New', monospace;
   --font-ui:       'Inter', system-ui, sans-serif;
@@ -103,13 +103,13 @@ body {
   background-clip: text;
   -webkit-text-fill-color: transparent;
   text-shadow: none;
-  filter: drop-shadow(0 0 12px rgba(0, 229, 255, 0.4));
+  filter: drop-shadow(0 0 12px rgba(85, 255, 85, 0.4));
   animation: titlePulse 4s ease-in-out infinite;
 }
 
 @keyframes titlePulse {
-  0%, 100% { filter: drop-shadow(0 0 12px rgba(0, 229, 255, 0.4)); }
-  50%      { filter: drop-shadow(0 0 24px rgba(0, 229, 255, 0.7)); }
+  0%, 100% { filter: drop-shadow(0 0 12px rgba(85, 255, 85, 0.4)); }
+  50%      { filter: drop-shadow(0 0 24px rgba(85, 255, 85, 0.7)); }
 }
 
 .subtitle {
@@ -320,7 +320,7 @@ body {
 .ctrl-btn:hover {
   background: var(--border-glow);
   border-color: var(--accent-cyan);
-  box-shadow: 0 0 12px rgba(0, 229, 255, 0.15);
+  box-shadow: 0 0 12px rgba(85, 255, 85, 0.15);
   transform: translateY(-1px);
 }
 
