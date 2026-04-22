@@ -41,25 +41,20 @@ function setStatus(msg: string) {
 }
 
 // ── Build the emulator URL ──────────────────────────────────
-function getEmulatorURL(): string {
+function getEmulatorURL(color = 'color', speed = 'normal'): string {
   // The disk images are served from our own Cloudflare Worker.
-  // Apple2TS loads them via URL hash fragment.
   const origin = window.location.origin;
-  const diskURL = `${origin}/disks/pss_side_a.dsk`;
+  // Use our pipe-separated multi-disk syntax added to Apple2TS
+  const diskURL = `${origin}/disks/pss_side_a.dsk|${origin}/disks/pss_side_b.dsk`;
   
-  // Apple2TS parameters:
-  //   machine=apple2ee  → Apple IIe Enhanced
-  //   appmode=embed     → Minimal UI for embedding
-  //   color=color       → Color display (user can change)
-  //   speed=normal      → 1 MHz authentic speed
   const params = new URLSearchParams({
     machine: 'apple2ee',
     appmode: 'embed',
-    color: 'color',
-    speed: 'normal',
+    color: color,
+    speed: speed,
   });
 
-  return `https://apple2ts.com/?${params.toString()}#${diskURL}`;
+  return `/emulator/index.html?${params.toString()}#${diskURL}`;
 }
 
 // ── Boot ─────────────────────────────────────────────────────
@@ -135,15 +130,17 @@ async function boot() {
         'amber': 'amber',
         'white': 'white',
       };
-      const origin = window.location.origin;
-      const diskURL = `${origin}/disks/pss_side_a.dsk`;
-      const params = new URLSearchParams({
-        machine: 'apple2ee',
-        appmode: 'embed',
-        color: colorMap[mode] || 'color',
-        speed: 'normal',
-      });
-      emulatorFrame.src = `https://apple2ts.com/?${params.toString()}#${diskURL}`;
+      
+      const speedSelect = document.getElementById('speed-select') as HTMLSelectElement;
+      const speedMap: Record<string, string> = {
+        '1': 'normal',
+        '2': 'two',
+        '4': 'fast',
+        '0': 'warp',
+      };
+      const speedVal = speedSelect ? speedMap[speedSelect.value] : 'normal';
+      
+      emulatorFrame.src = getEmulatorURL(colorMap[mode] || 'color', speedVal || 'normal');
     });
 
     // Speed selector
@@ -155,15 +152,17 @@ async function boot() {
         '4': 'fast',
         '0': 'warp',
       };
-      const origin = window.location.origin;
-      const diskURL = `${origin}/disks/pss_side_a.dsk`;
-      const params = new URLSearchParams({
-        machine: 'apple2ee',
-        appmode: 'embed',
-        color: 'color',
-        speed: speedMap[speedVal] || 'normal',
-      });
-      emulatorFrame.src = `https://apple2ts.com/?${params.toString()}#${diskURL}`;
+      
+      const colorSelect = document.getElementById('color-select') as HTMLSelectElement;
+      const colorMap: Record<string, string> = {
+        'color': 'color',
+        'green': 'green',
+        'amber': 'amber',
+        'white': 'white',
+      };
+      const colorVal = colorSelect ? colorMap[colorSelect.value] : 'color';
+
+      emulatorFrame.src = getEmulatorURL(colorVal || 'color', speedMap[speedVal] || 'normal');
     });
 
     // Focus the iframe when clicking the monitor area
